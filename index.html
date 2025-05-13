@@ -223,7 +223,7 @@
         }
 
         button:hover {
-            transform: translateY(-2px);
+            transform: translateY(-2px) scale(1.05);
             box-shadow: 0 5px 15px rgba(74, 107, 255, 0.4);
             opacity: 0.9;
         }
@@ -307,6 +307,10 @@
             background: rgba(255,255,255,0.03);
         }
 
+        tr:nth-child(even) {
+            background: rgba(255,255,255,0.05);
+        }
+
         .badge {
             display: inline-block;
             padding: 3px 8px;
@@ -356,6 +360,17 @@
             .print-only {
                 display: block;
             }
+            body {
+                font-size: 12pt;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 8px;
+                border: 1px solid #ddd;
+            }
         }
 
         @media (max-width: 768px) {
@@ -370,6 +385,10 @@
             }
             header h1 {
                 font-size: 1.8rem;
+            }
+            button {
+                padding: 12px 20px;
+                font-size: 0.9rem;
             }
         }
 
@@ -420,6 +439,7 @@
             display: flex;
             gap: 10px;
             margin-top: 20px;
+            flex-wrap: wrap;
         }
 
         .empty-state {
@@ -433,12 +453,76 @@
             margin-bottom: 15px;
             opacity: 0.5;
         }
+
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+
+        .discount-input {
+            margin-top: 15px;
+        }
+
+        .cart-count {
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            margin-right: 5px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 15px 25px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: var(--danger);
+        }
+
+        .toast.warning {
+            background: var(--warning);
+        }
+
+        .barcode-input {
+            font-family: 'Libre Barcode 39', cursive;
+            font-size: 24px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="header-badge">v2.0</div>
+            <div class="header-badge">v2.2</div>
             <h1><i class="fas fa-store-alt"></i> نظام إدارة المتجر المتكامل</h1>
             <p>إدارة المبيعات والمشتريات والأرباح في مكان واحد</p>
         </header>
@@ -498,12 +582,21 @@
                         <label><i class="fas fa-user-tag"></i> اسم العميل (اختياري)</label>
                         <input type="text" id="customerName" placeholder="ادخل اسم العميل">
                     </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-barcode"></i> مسح الباركود (اختياري)</label>
+                        <input type="text" id="barcodeInput" class="barcode-input" placeholder="مسح الباركود">
+                    </div>
                 </div>
                 
                 <div class="form-group">
-                    <label><i class="fas fa-box-open"></i> المنتجات المباعة</label>
+                    <label><i class="fas fa-box-open"></i> المنتجات المباعة <span class="cart-count" id="cartCount">0</span></label>
                     <div id="saleItems"></div>
                     <button type="button" id="addSaleItemBtn" class="secondary"><i class="fas fa-plus"></i> إضافة منتج</button>
+                </div>
+                
+                <div class="form-group discount-input">
+                    <label><i class="fas fa-tag"></i> الخصم (درهم)</label>
+                    <input type="number" id="discount" min="0" value="0" placeholder="مبلغ الخصم">
                 </div>
                 
                 <div class="form-group">
@@ -522,7 +615,7 @@
                 <h2><i class="fas fa-history"></i> سجل المبيعات الحديثة</h2>
                 <div class="search-box">
                     <input type="text" id="salesSearch" placeholder="ابحث في المبيعات...">
-                    <button class="secondary"><i class="fas fa-search"></i> بحث</button>
+                    <button class="secondary" id="searchSalesBtn"><i class="fas fa-search"></i> بحث</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
@@ -577,6 +670,7 @@
                 
                 <div class="action-buttons">
                     <button id="savePurchaseBtn" class="success"><i class="fas fa-save"></i> حفظ الشراء</button>
+                    <button id="printPurchaseBtn" class="secondary"><i class="fas fa-print"></i> طباعة الفاتورة</button>
                     <button id="clearPurchaseBtn" class="danger"><i class="fas fa-trash"></i> مسح النموذج</button>
                 </div>
             </div>
@@ -619,11 +713,11 @@
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-tag"></i> سعر البيع (درهم)</label>
-                        <input type="number" id="productPrice" placeholder="سعر البيع">
+                        <input type="number" id="productPrice" min="0" placeholder="سعر البيع">
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-money-bill-wave"></i> سعر الشراء (درهم)</label>
-                        <input type="number" id="productCost" placeholder="سعر الشراء">
+                        <label><i class="fas fa-barcode"></i> باركود المنتج (اختياري)</label>
+                        <input type="text" id="productBarcode" placeholder="باركود المنتج">
                     </div>
                 </div>
                 
@@ -635,6 +729,7 @@
                 <div class="action-buttons">
                     <button id="saveProductBtn"><i class="fas fa-save"></i> حفظ المنتج</button>
                     <button id="clearProductBtn" class="secondary"><i class="fas fa-undo"></i> مسح الحقول</button>
+                    <button id="copyBarcodeBtn" class="secondary"><i class="fas fa-copy"></i> نسخ الباركود</button>
                 </div>
             </div>
 
@@ -642,16 +737,15 @@
                 <h2><i class="fas fa-box-open"></i> قائمة المنتجات</h2>
                 <div class="search-box">
                     <input type="text" id="productsSearch" placeholder="ابحث في المنتجات...">
-                    <button class="secondary"><i class="fas fa-search"></i> بحث</button>
+                    <button class="secondary" id="searchProductsBtn"><i class="fas fa-search"></i> بحث</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
                             <tr>
                                 <th>المنتج</th>
-                                <th>سعر الشراء</th>
                                 <th>سعر البيع</th>
-                                <th>الربح</th>
+                                <th>الباركود</th>
                                 <th>العمليات</th>
                             </tr>
                         </thead>
@@ -693,7 +787,11 @@
                     </div>
                 </div>
                 
-                <button id="generateReportBtn"><i class="fas fa-chart-pie"></i> توليد التقرير</button>
+                <div class="report-actions">
+                    <button id="generateReportBtn"><i class="fas fa-chart-pie"></i> توليد التقرير</button>
+                    <button id="printReportBtn" class="secondary"><i class="fas fa-print"></i> طباعة التقرير</button>
+                    <button id="exportReportBtn" class="secondary"><i class="fas fa-download"></i> تصدير البيانات</button>
+                </div>
                 
                 <div class="chart-container">
                     <canvas id="salesChart"></canvas>
@@ -757,6 +855,14 @@
                             <td colspan="3" style="text-align: left; padding: 10px; border-top: 1px solid #ddd;"><strong>الإجمالي:</strong></td>
                             <td style="text-align: left; padding: 10px; border-top: 1px solid #ddd;"><strong id="printTotal">0.00 درهم</strong></td>
                         </tr>
+                        <tr id="printDiscountRow" style="display: none;">
+                            <td colspan="3" style="text-align: left; padding: 10px;"><strong>الخصم:</strong></td>
+                            <td style="text-align: left; padding: 10px;"><strong id="printDiscount">0.00 درهم</strong></td>
+                        </tr>
+                        <tr id="printTotalAfterDiscountRow" style="display: none;">
+                            <td colspan="3" style="text-align: left; padding: 10px;"><strong>الإجمالي بعد الخصم:</strong></td>
+                            <td style="text-align: left; padding: 10px;"><strong id="printTotalAfterDiscount">0.00 درهم</strong></td>
+                        </tr>
                     </tfoot>
                 </table>
                 
@@ -766,6 +872,133 @@
                 </div>
             </div>
         </div>
+
+        <!-- منطقة طباعة المشتريات -->
+        <div id="printPurchaseArea" class="print-area" style="display: none;">
+            <div class="print-only">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="font-size: 24px; margin-bottom: 5px;">فاتورة شراء</h2>
+                    <p style="font-size: 14px; color: #666;">نظام إدارة المتجر المتكامل</p>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <p><strong>رقم الفاتورة:</strong> <span id="purchaseInvoiceNumber">PUR-0001</span></p>
+                        <p><strong>التاريخ:</strong> <span id="printPurchaseDate">01/01/2023</span></p>
+                    </div>
+                    <div>
+                        <p><strong>المورد:</strong> <span id="printSupplier">---</span></p>
+                        <p><strong>وقت الطباعة:</strong> <span id="printPurchaseTime">12:00 PM</span></p>
+                    </div>
+                </div>
+                
+                <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #f5f5f5;">
+                            <th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">المنتج</th>
+                            <th style="padding: 10px; text-align: center; border-bottom: 1px solid #ddd;">الكمية</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">السعر</th>
+                            <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">المجموع</th>
+                        </tr>
+                    </thead>
+                    <tbody id="printPurchaseItems">
+                        <!-- سيتم ملؤه بالبيانات -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" style="text-align: left; padding: 10px; border-top: 1px solid #ddd;"><strong>الإجمالي:</strong></td>
+                            <td style="text-align: left; padding: 10px; border-top: 1px solid #ddd;"><strong id="printPurchaseTotal">0.00 درهم</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+                    <p>فاتورة شراء للمتجر</p>
+                    <p>للاستفسار: 0501234567 | example@store.com</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- منطقة طباعة التقارير -->
+        <div id="printReportArea" class="print-area" style="display: none;">
+            <div class="print-only">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h2 style="font-size: 24px; margin-bottom: 5px;">تقرير المبيعات والمشتريات</h2>
+                    <p style="font-size: 14px; color: #666;">نظام إدارة المتجر المتكامل</p>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                    <div>
+                        <p><strong>الفترة:</strong> <span id="printReportPeriod">01/01/2023 - 31/01/2023</span></p>
+                    </div>
+                    <div>
+                        <p><strong>تاريخ الطباعة:</strong> <span id="printReportDate">01/01/2023</span></p>
+                        <p><strong>وقت الطباعة:</strong> <span id="printReportTime">12:00 PM</span></p>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">ملخص التقرير</h3>
+                    <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                        <div style="flex: 1; text-align: center;">
+                            <p style="font-size: 18px; font-weight: bold;">إجمالي المبيعات</p>
+                            <p style="font-size: 24px;" id="printReportTotalSales">0.00 درهم</p>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <p style="font-size: 18px; font-weight: bold;">إجمالي المشتريات</p>
+                            <p style="font-size: 24px;" id="printReportTotalPurchases">0.00 درهم</p>
+                        </div>
+                        <div style="flex: 1; text-align: center;">
+                            <p style="font-size: 18px; font-weight: bold;">صافي الأرباح</p>
+                            <p style="font-size: 24px;" id="printReportNetProfit">0.00 درهم</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">تفاصيل المبيعات</h3>
+                    <table style="width: 100%; margin: 15px 0; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f5f5f5;">
+                                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">التاريخ</th>
+                                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">العميل</th>
+                                <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="printReportSales">
+                            <!-- سيتم ملؤه بالبيانات -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 5px;">تفاصيل المشتريات</h3>
+                    <table style="width: 100%; margin: 15px 0; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f5f5f5;">
+                                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">التاريخ</th>
+                                <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">المورد</th>
+                                <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">المبلغ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="printReportPurchases">
+                            <!-- سيتم ملؤه بالبيانات -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+                    <p>تقرير مالي للمتجر</p>
+                    <p>للاستفسار: 0501234567 | example@store.com</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- تنبيهات -->
+        <div id="toast" class="toast">
+            <i class="fas fa-check-circle"></i>
+            <span id="toastMessage">تم الحفظ بنجاح</span>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -774,7 +1007,9 @@
         let sales = JSON.parse(localStorage.getItem('sales')) || [];
         let purchases = JSON.parse(localStorage.getItem('purchases')) || [];
         let products = JSON.parse(localStorage.getItem('products')) || [];
-        let currentProductId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+        let currentProductId = localStorage.getItem('currentProductId') ? parseInt(localStorage.getItem('currentProductId')) : 
+            (products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1);
+        let lastUser = localStorage.getItem('lastUser') || '';
 
         // تهيئة الرسوم البيانية
         let salesChart;
@@ -784,6 +1019,7 @@
             // عناصر المبيعات
             saleDate: document.getElementById('saleDate'),
             customerName: document.getElementById('customerName'),
+            barcodeInput: document.getElementById('barcodeInput'),
             saleItems: document.getElementById('saleItems'),
             addSaleItemBtn: document.getElementById('addSaleItemBtn'),
             saleNotes: document.getElementById('saleNotes'),
@@ -792,7 +1028,10 @@
             clearSaleBtn: document.getElementById('clearSaleBtn'),
             salesTable: document.getElementById('salesTable'),
             salesSearch: document.getElementById('salesSearch'),
+            searchSalesBtn: document.getElementById('searchSalesBtn'),
             noSales: document.getElementById('no-sales'),
+            discount: document.getElementById('discount'),
+            cartCount: document.getElementById('cartCount'),
             
             // عناصر المشتريات
             purchaseDate: document.getElementById('purchaseDate'),
@@ -801,6 +1040,7 @@
             addPurchaseItemBtn: document.getElementById('addPurchaseItemBtn'),
             purchaseNotes: document.getElementById('purchaseNotes'),
             savePurchaseBtn: document.getElementById('savePurchaseBtn'),
+            printPurchaseBtn: document.getElementById('printPurchaseBtn'),
             clearPurchaseBtn: document.getElementById('clearPurchaseBtn'),
             purchasesTable: document.getElementById('purchasesTable'),
             noPurchases: document.getElementById('no-purchases'),
@@ -808,12 +1048,14 @@
             // عناصر المنتجات
             productName: document.getElementById('productName'),
             productPrice: document.getElementById('productPrice'),
-            productCost: document.getElementById('productCost'),
             productDescription: document.getElementById('productDescription'),
+            productBarcode: document.getElementById('productBarcode'),
             saveProductBtn: document.getElementById('saveProductBtn'),
             clearProductBtn: document.getElementById('clearProductBtn'),
+            copyBarcodeBtn: document.getElementById('copyBarcodeBtn'),
             productsTable: document.getElementById('productsTable'),
             productsSearch: document.getElementById('productsSearch'),
+            searchProductsBtn: document.getElementById('searchProductsBtn'),
             noProducts: document.getElementById('no-products'),
             
             // عناصر التقارير
@@ -821,6 +1063,8 @@
             reportStartDate: document.getElementById('reportStartDate'),
             reportEndDate: document.getElementById('reportEndDate'),
             generateReportBtn: document.getElementById('generateReportBtn'),
+            printReportBtn: document.getElementById('printReportBtn'),
+            exportReportBtn: document.getElementById('exportReportBtn'),
             
             // عناصر لوحة التحكم
             dailyIncome: document.getElementById('dailyIncome'),
@@ -839,6 +1083,30 @@
             printCustomer: document.getElementById('printCustomer'),
             printTime: document.getElementById('printTime'),
             invoiceNumber: document.getElementById('invoiceNumber'),
+            printDiscount: document.getElementById('printDiscount'),
+            printDiscountRow: document.getElementById('printDiscountRow'),
+            printTotalAfterDiscount: document.getElementById('printTotalAfterDiscount'),
+            printTotalAfterDiscountRow: document.getElementById('printTotalAfterDiscountRow'),
+            
+            // عناصر طباعة المشتريات
+            printPurchaseArea: document.getElementById('printPurchaseArea'),
+            printPurchaseItems: document.getElementById('printPurchaseItems'),
+            printPurchaseTotal: document.getElementById('printPurchaseTotal'),
+            printPurchaseDate: document.getElementById('printPurchaseDate'),
+            printSupplier: document.getElementById('printSupplier'),
+            printPurchaseTime: document.getElementById('printPurchaseTime'),
+            purchaseInvoiceNumber: document.getElementById('purchaseInvoiceNumber'),
+            
+            // عناصر طباعة التقارير
+            printReportArea: document.getElementById('printReportArea'),
+            printReportPeriod: document.getElementById('printReportPeriod'),
+            printReportDate: document.getElementById('printReportDate'),
+            printReportTime: document.getElementById('printReportTime'),
+            printReportTotalSales: document.getElementById('printReportTotalSales'),
+            printReportTotalPurchases: document.getElementById('printReportTotalPurchases'),
+            printReportNetProfit: document.getElementById('printReportNetProfit'),
+            printReportSales: document.getElementById('printReportSales'),
+            printReportPurchases: document.getElementById('printReportPurchases'),
             
             // عناصر التبويبات
             tabs: document.querySelectorAll('.tab'),
@@ -850,7 +1118,11 @@
             reportNetProfit: document.getElementById('reportNetProfit'),
             reportSalesCount: document.getElementById('reportSalesCount'),
             reportPurchasesCount: document.getElementById('reportPurchasesCount'),
-            reportProfitMargin: document.getElementById('reportProfitMargin')
+            reportProfitMargin: document.getElementById('reportProfitMargin'),
+            
+            // عناصر التنبيهات
+            toast: document.getElementById('toast'),
+            toastMessage: document.getElementById('toastMessage')
         };
 
         // تهيئة التطبيق
@@ -864,6 +1136,11 @@
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
             el.reportStartDate.value = firstDay;
             el.reportEndDate.value = today;
+            
+            // تعيين آخر مستخدم
+            if (lastUser) {
+                el.customerName.value = lastUser;
+            }
             
             initCharts();
             loadDashboard();
@@ -879,18 +1156,30 @@
             el.saveSaleBtn.addEventListener('click', saveSale);
             el.printInvoiceBtn.addEventListener('click', preparePrint);
             el.clearSaleBtn.addEventListener('click', clearSaleForm);
+            el.searchSalesBtn.addEventListener('click', searchSales);
+            el.salesSearch.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchSales();
+            });
             
             // أحداث المشتريات
             el.addPurchaseItemBtn.addEventListener('click', () => addPurchaseItem());
             el.savePurchaseBtn.addEventListener('click', savePurchase);
+            el.printPurchaseBtn.addEventListener('click', preparePurchasePrint);
             el.clearPurchaseBtn.addEventListener('click', clearPurchaseForm);
             
             // أحداث المنتجات
             el.saveProductBtn.addEventListener('click', saveProduct);
             el.clearProductBtn.addEventListener('click', clearProductForm);
+            el.copyBarcodeBtn.addEventListener('click', copyBarcode);
+            el.searchProductsBtn.addEventListener('click', searchProducts);
+            el.productsSearch.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchProducts();
+            });
             
             // أحداث التقارير
             el.generateReportBtn.addEventListener('click', generateReport);
+            el.printReportBtn.addEventListener('click', printReport);
+            el.exportReportBtn.addEventListener('click', exportReport);
             
             // أحداث التبويبات
             el.tabs.forEach(tab => {
@@ -903,15 +1192,32 @@
                 });
             });
             
-            // أحداث البحث
-            el.salesSearch.addEventListener('input', searchSales);
-            el.productsSearch.addEventListener('input', searchProducts);
+            // أحداث الباركود
+            el.barcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const barcode = el.barcodeInput.value.trim();
+                    if (barcode) {
+                        const product = products.find(p => p.barcode === barcode);
+                        if (product) {
+                            addSaleItem(product);
+                            el.barcodeInput.value = '';
+                            showToast('تم إضافة المنتج من الباركود');
+                        } else {
+                            showToast('المنتج غير موجود', 'error');
+                        }
+                    }
+                }
+            });
+            
+            // تحديث زر الحفظ عند تغيير البيانات
+            el.saleItems.addEventListener('input', updateSaveButtonState);
+            el.purchaseItems.addEventListener('input', updateSaveButtonState);
         }
 
         // ==================== وظائف المبيعات ====================
         function addSaleItem(product = null) {
             const itemDiv = document.createElement('div');
-            itemDiv.className = 'item-entry';
+            itemDiv.className = 'item-entry fade-in';
             
             itemDiv.innerHTML = `
                 <input type="text" class="product-name" placeholder="اسم المنتج" value="${product?.name || ''}">
@@ -923,12 +1229,19 @@
             
             // أحداث التحديث
             itemDiv.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', () => updateSaleItemTotal(itemDiv));
+                input.addEventListener('input', () => {
+                    updateSaleItemTotal(itemDiv);
+                    updateCartCount();
+                });
             });
             
-            itemDiv.querySelector('.remove-item-btn').addEventListener('click', () => itemDiv.remove());
+            itemDiv.querySelector('.remove-item-btn').addEventListener('click', () => {
+                itemDiv.remove();
+                updateCartCount();
+            });
             
             el.saleItems.appendChild(itemDiv);
+            updateCartCount();
         }
 
         function updateSaleItemTotal(itemDiv) {
@@ -939,10 +1252,16 @@
             return total;
         }
 
+        function updateCartCount() {
+            const count = document.querySelectorAll('#saleItems .item-entry').length;
+            el.cartCount.textContent = count;
+        }
+
         function saveSale() {
             const saleDate = el.saleDate.value;
             const customerName = el.customerName.value;
             const notes = el.saleNotes.value;
+            const discount = parseFloat(el.discount.value) || 0;
             
             const items = [];
             let total = 0;
@@ -953,7 +1272,7 @@
                 const price = parseFloat(itemDiv.querySelector('.product-price').value);
                 
                 if (!name || !quantity || !price) {
-                    alert('الرجاء إدخال جميع بيانات المنتج');
+                    showToast('الرجاء إدخال جميع بيانات المنتج', 'error');
                     return;
                 }
                 
@@ -968,9 +1287,11 @@
             });
             
             if (items.length === 0) {
-                alert('يجب إضافة منتج واحد على الأقل');
+                showToast('يجب إضافة منتج واحد على الأقل', 'error');
                 return;
             }
+            
+            const totalAfterDiscount = total - discount;
             
             const newSale = {
                 id: Date.now(),
@@ -979,13 +1300,20 @@
                 notes,
                 items,
                 total,
+                discount,
+                totalAfterDiscount,
                 timestamp: new Date().getTime()
             };
             
             sales.push(newSale);
             localStorage.setItem('sales', JSON.stringify(sales));
             
-            alert('تم حفظ عملية البيع بنجاح!');
+            // حفظ اسم العميل لاستخدامه لاحقاً
+            if (customerName) {
+                localStorage.setItem('lastUser', customerName);
+            }
+            
+            showToast('تم حفظ عملية البيع بنجاح!');
             clearSaleForm();
             loadDashboard();
             loadRecentSales();
@@ -1007,12 +1335,13 @@
             
             recent.forEach(sale => {
                 const row = document.createElement('tr');
+                row.className = 'fade-in';
                 
                 row.innerHTML = `
-                    <td>${formatDate(sale.date)}</td>
+                    <td>${formatArabicDate(sale.date)}</td>
                     <td>${sale.customer || '---'}</td>
                     <td>${sale.items.length} منتج</td>
-                    <td>${sale.total.toFixed(2)} درهم</td>
+                    <td>${sale.total.toCurrency()}</td>
                     <td>
                         <button onclick="viewSale(${sale.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-eye"></i></button>
                         <button onclick="printSale(${sale.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-print"></i></button>
@@ -1028,15 +1357,17 @@
 
         function clearSaleForm() {
             el.saleItems.innerHTML = '';
-            el.customerName.value = '';
             el.saleNotes.value = '';
             el.saleDate.value = new Date().toISOString().split('T')[0];
+            el.discount.value = '0';
+            updateCartCount();
+            updateSaveButtonState();
         }
 
         // ==================== وظائف المشتريات ====================
         function addPurchaseItem(product = null) {
             const itemDiv = document.createElement('div');
-            itemDiv.className = 'item-entry';
+            itemDiv.className = 'item-entry fade-in';
             
             itemDiv.innerHTML = `
                 <input type="text" class="product-name" placeholder="اسم المنتج" value="${product?.name || ''}">
@@ -1078,7 +1409,7 @@
                 const price = parseFloat(itemDiv.querySelector('.product-price').value);
                 
                 if (!name || !quantity || !price) {
-                    alert('الرجاء إدخال جميع بيانات المنتج');
+                    showToast('الرجاء إدخال جميع بيانات المنتج', 'error');
                     return;
                 }
                 
@@ -1093,7 +1424,7 @@
             });
             
             if (items.length === 0) {
-                alert('يجب إضافة منتج واحد على الأقل');
+                showToast('يجب إضافة منتج واحد على الأقل', 'error');
                 return;
             }
             
@@ -1110,7 +1441,7 @@
             purchases.push(newPurchase);
             localStorage.setItem('purchases', JSON.stringify(purchases));
             
-            alert('تم حفظ عملية الشراء بنجاح!');
+            showToast('تم حفظ عملية الشراء بنجاح!');
             clearPurchaseForm();
             loadDashboard();
             loadRecentPurchases();
@@ -1132,14 +1463,16 @@
             
             recent.forEach(purchase => {
                 const row = document.createElement('tr');
+                row.className = 'fade-in';
                 
                 row.innerHTML = `
-                    <td>${formatDate(purchase.date)}</td>
+                    <td>${formatArabicDate(purchase.date)}</td>
                     <td>${purchase.supplier || '---'}</td>
                     <td>${purchase.items.length} منتج</td>
-                    <td>${purchase.total.toFixed(2)} درهم</td>
+                    <td>${purchase.total.toCurrency()}</td>
                     <td>
                         <button onclick="viewPurchase(${purchase.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-eye"></i></button>
+                        <button onclick="printPurchase(${purchase.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-print"></i></button>
                         <button onclick="deletePurchase(${purchase.id})" class="danger" style="padding: 5px 10px;"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
@@ -1155,17 +1488,18 @@
             el.supplierName.value = '';
             el.purchaseNotes.value = '';
             el.purchaseDate.value = new Date().toISOString().split('T')[0];
+            updateSaveButtonState();
         }
 
         // ==================== وظائف المنتجات ====================
         function saveProduct() {
             const name = el.productName.value;
             const price = parseFloat(el.productPrice.value);
-            const cost = parseFloat(el.productCost.value);
             const description = el.productDescription.value;
+            const barcode = el.productBarcode.value;
             
-            if (!name || isNaN(price) || isNaN(cost)) {
-                alert('الرجاء إدخال جميع البيانات المطلوبة');
+            if (!name || isNaN(price)) {
+                showToast('الرجاء إدخال جميع البيانات المطلوبة', 'error');
                 return;
             }
             
@@ -1173,8 +1507,8 @@
                 id: currentProductId++,
                 name,
                 price,
-                cost,
                 description,
+                barcode,
                 timestamp: new Date().getTime()
             };
             
@@ -1182,7 +1516,7 @@
             localStorage.setItem('products', JSON.stringify(products));
             localStorage.setItem('currentProductId', currentProductId);
             
-            alert('تم حفظ المنتج بنجاح!');
+            showToast('تم حفظ المنتج بنجاح!');
             clearProductForm();
             loadProducts();
         }
@@ -1198,20 +1532,13 @@
             el.noProducts.style.display = 'none';
             
             products.forEach(product => {
-                const profit = product.price - product.cost;
-                const profitPercentage = (profit / product.cost * 100).toFixed(1);
-                
                 const row = document.createElement('tr');
+                row.className = 'fade-in';
                 
                 row.innerHTML = `
                     <td>${product.name}</td>
-                    <td>${product.cost.toFixed(2)} درهم</td>
-                    <td>${product.price.toFixed(2)} درهم</td>
-                    <td>
-                        <span class="${profit >= 0 ? 'badge-success' : 'badge-danger'}">
-                            ${profit.toFixed(2)} درهم (${profitPercentage}%)
-                        </span>
-                    </td>
+                    <td>${product.price.toCurrency()}</td>
+                    <td>${product.barcode || '---'}</td>
                     <td>
                         <button onclick="editProduct(${product.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-edit"></i></button>
                         <button onclick="deleteProduct(${product.id})" class="danger" style="padding: 5px 10px;"><i class="fas fa-trash"></i></button>
@@ -1227,8 +1554,9 @@
         function clearProductForm() {
             el.productName.value = '';
             el.productPrice.value = '';
-            el.productCost.value = '';
             el.productDescription.value = '';
+            el.productBarcode.value = '';
+            updateSaveButtonState();
         }
 
         function editProduct(id) {
@@ -1237,14 +1565,15 @@
             
             el.productName.value = product.name;
             el.productPrice.value = product.price;
-            el.productCost.value = product.cost;
             el.productDescription.value = product.description;
+            el.productBarcode.value = product.barcode || '';
             
             // حذف المنتج القديم
             products = products.filter(p => p.id !== id);
             localStorage.setItem('products', JSON.stringify(products));
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            showToast('يمكنك الآن تعديل المنتج', 'warning');
         }
 
         function deleteProduct(id) {
@@ -1252,6 +1581,17 @@
                 products = products.filter(p => p.id !== id);
                 localStorage.setItem('products', JSON.stringify(products));
                 loadProducts();
+                showToast('تم حذف المنتج بنجاح');
+            }
+        }
+
+        function copyBarcode() {
+            const barcode = el.productBarcode.value;
+            if (barcode) {
+                navigator.clipboard.writeText(barcode);
+                showToast('تم نسخ الباركود');
+            } else {
+                showToast('لا يوجد باركود لنسخه', 'error');
             }
         }
 
@@ -1277,15 +1617,106 @@
             const profitMargin = totalSales > 0 ? (netProfit / totalSales * 100) : 0;
             
             // عرض النتائج
-            el.reportTotalSales.textContent = `${totalSales.toFixed(2)} درهم`;
-            el.reportTotalPurchases.textContent = `${totalPurchases.toFixed(2)} درهم`;
-            el.reportNetProfit.textContent = `${netProfit.toFixed(2)} درهم`;
+            el.reportTotalSales.textContent = totalSales.toCurrency();
+            el.reportTotalPurchases.textContent = totalPurchases.toCurrency();
+            el.reportNetProfit.textContent = netProfit.toCurrency();
             el.reportSalesCount.textContent = filteredSales.length;
             el.reportPurchasesCount.textContent = filteredPurchases.length;
             el.reportProfitMargin.textContent = `${profitMargin.toFixed(1)}%`;
             
             // تحديث الرسم البياني
             updateSalesChart(filteredSales, filteredPurchases);
+            
+            showToast('تم توليد التقرير بنجاح');
+        }
+
+        function printReport() {
+            const startDate = el.reportStartDate.value;
+            const endDate = el.reportEndDate.value;
+            
+            // تعبئة بيانات التقرير
+            el.printReportPeriod.textContent = `${formatArabicDate(startDate)} - ${formatArabicDate(endDate)}`;
+            el.printReportDate.textContent = formatArabicDate(new Date().toISOString().split('T')[0]);
+            el.printReportTime.textContent = new Date().toLocaleTimeString('ar-EG');
+            
+            el.printReportTotalSales.textContent = el.reportTotalSales.textContent;
+            el.printReportTotalPurchases.textContent = el.reportTotalPurchases.textContent;
+            el.printReportNetProfit.textContent = el.reportNetProfit.textContent;
+            
+            // تعبئة تفاصيل المبيعات
+            const filteredSales = [...sales].filter(s => s.date >= startDate && s.date <= endDate);
+            el.printReportSales.innerHTML = filteredSales.map(sale => `
+                <tr>
+                    <td style="padding: 8px; text-align: right;">${formatArabicDate(sale.date)}</td>
+                    <td style="padding: 8px; text-align: right;">${sale.customer || '---'}</td>
+                    <td style="padding: 8px; text-align: left;">${sale.total.toFixed(2)} درهم</td>
+                </tr>
+            `).join('');
+            
+            // تعبئة تفاصيل المشتريات
+            const filteredPurchases = [...purchases].filter(p => p.date >= startDate && p.date <= endDate);
+            el.printReportPurchases.innerHTML = filteredPurchases.map(purchase => `
+                <tr>
+                    <td style="padding: 8px; text-align: right;">${formatArabicDate(purchase.date)}</td>
+                    <td style="padding: 8px; text-align: right;">${purchase.supplier || '---'}</td>
+                    <td style="padding: 8px; text-align: left;">${purchase.total.toFixed(2)} درهم</td>
+                </tr>
+            `).join('');
+            
+            // الطباعة
+            el.printReportArea.style.display = 'block';
+            window.print();
+            el.printReportArea.style.display = 'none';
+        }
+
+        function exportReport() {
+            const startDate = el.reportStartDate.value;
+            const endDate = el.reportEndDate.value;
+            
+            const filteredSales = [...sales].filter(s => s.date >= startDate && s.date <= endDate);
+            const filteredPurchases = [...purchases].filter(p => p.date >= startDate && p.date <= endDate);
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // عنوان التقرير
+            csvContent += "تقرير المبيعات والمشتريات\r\n";
+            csvContent += `الفترة: ${formatArabicDate(startDate)} - ${formatArabicDate(endDate)}\r\n`;
+            csvContent += `تاريخ التصدير: ${formatArabicDate(new Date().toISOString().split('T')[0])}\r\n\r\n`;
+            
+            // ملخص التقرير
+            csvContent += "ملخص التقرير\r\n";
+            csvContent += `إجمالي المبيعات,${el.reportTotalSales.textContent}\r\n`;
+            csvContent += `إجمالي المشتريات,${el.reportTotalPurchases.textContent}\r\n`;
+            csvContent += `صافي الأرباح,${el.reportNetProfit.textContent}\r\n`;
+            csvContent += `عدد فواتير المبيعات,${el.reportSalesCount.textContent}\r\n`;
+            csvContent += `عدد فواتير المشتريات,${el.reportPurchasesCount.textContent}\r\n\r\n`;
+            
+            // تفاصيل المبيعات
+            csvContent += "تفاصيل المبيعات\r\n";
+            csvContent += "التاريخ,العميل,المبلغ\r\n";
+            filteredSales.forEach(sale => {
+                csvContent += `${formatArabicDate(sale.date)},${sale.customer || '---'},${sale.total.toFixed(2)}\r\n`;
+            });
+            
+            csvContent += "\r\n";
+            
+            // تفاصيل المشتريات
+            csvContent += "تفاصيل المشتريات\r\n";
+            csvContent += "التاريخ,المورد,المبلغ\r\n";
+            filteredPurchases.forEach(purchase => {
+                csvContent += `${formatArabicDate(purchase.date)},${purchase.supplier || '---'},${purchase.total.toFixed(2)}\r\n`;
+            });
+            
+            // إنشاء الرابط وتنزيل الملف
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `تقرير_المتجر_${startDate}_${endDate}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('تم تصدير التقرير بنجاح');
         }
 
         function updateSalesChart(salesData, purchasesData) {
@@ -1374,7 +1805,7 @@
             const salesChange = yesterdaySales > 0 ? 
                 ((todaySales - yesterdaySales) / yesterdaySales * 100).toFixed(1) : 0;
             
-            el.dailyIncome.textContent = `${todaySales.toFixed(2)} درهم`;
+            el.dailyIncome.textContent = todaySales.toCurrency();
             el.dailyComparison.textContent = `${salesChange >= 0 ? '+' : ''}${salesChange}%`;
             el.dailyComparison.className = salesChange >= 0 ? 'positive' : 'negative';
             el.dailyProgress.style.width = `${Math.min(todaySales / 10000 * 100, 100)}%`;
@@ -1387,24 +1818,17 @@
             const lastPurchase = purchases
                 .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
             
-            el.dailyPurchases.textContent = `${todayPurchases.toFixed(2)} درهم`;
+            el.dailyPurchases.textContent = todayPurchases.toCurrency();
             el.lastPurchase.textContent = lastPurchase ? 
-                `${formatDate(lastPurchase.date)} - ${lastPurchase.total.toFixed(2)} درهم` : '---';
+                `${formatArabicDate(lastPurchase.date)} - ${lastPurchase.total.toCurrency()}` : '---';
             
             // الأرباح الصافية
-            const totalCost = sales.reduce((sum, s) => {
-                return sum + s.items.reduce((itemSum, item) => {
-                    const product = products.find(p => p.name === item.name);
-                    return itemSum + (product ? product.cost * item.quantity : 0);
-                }, 0);
-            }, 0);
-            
             const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
             const totalPurchasesAmount = purchases.reduce((sum, p) => sum + p.total, 0);
-            const netProfit = totalRevenue - totalCost - totalPurchasesAmount;
+            const netProfit = totalRevenue - totalPurchasesAmount;
             const margin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
             
-            el.netProfit.textContent = `${netProfit.toFixed(2)} درهم`;
+            el.netProfit.textContent = netProfit.toCurrency();
             el.profitMargin.textContent = `${margin.toFixed(1)}%`;
             el.profitMargin.className = margin >= 0 ? 'positive' : 'negative';
         }
@@ -1434,9 +1858,12 @@
             });
             
             if (items.length === 0) {
-                alert('لا توجد عناصر لطباعتها');
+                showToast('لا توجد عناصر لطباعتها', 'error');
                 return;
             }
+            
+            const discount = parseFloat(el.discount.value) || 0;
+            const totalAfterDiscount = total - discount;
             
             // تعبئة بيانات الطباعة
             el.printItems.innerHTML = items.map(item => `
@@ -1449,10 +1876,20 @@
             `).join('');
             
             el.printTotal.textContent = `${total.toFixed(2)} درهم`;
-            el.printDate.textContent = formatDate(today);
+            el.printDate.textContent = formatArabicDate(today);
             el.printCustomer.textContent = el.customerName.value || '---';
             el.printTime.textContent = new Date().toLocaleTimeString('ar-EG');
             el.invoiceNumber.textContent = `INV-${Date.now().toString().slice(-6)}`;
+            
+            if (discount > 0) {
+                el.printDiscount.textContent = `${discount.toFixed(2)} درهم`;
+                el.printDiscountRow.style.display = '';
+                el.printTotalAfterDiscount.textContent = `${totalAfterDiscount.toFixed(2)} درهم`;
+                el.printTotalAfterDiscountRow.style.display = '';
+            } else {
+                el.printDiscountRow.style.display = 'none';
+                el.printTotalAfterDiscountRow.style.display = 'none';
+            }
             
             // الطباعة
             el.printArea.style.display = 'block';
@@ -1475,10 +1912,20 @@
             `).join('');
             
             el.printTotal.textContent = `${sale.total.toFixed(2)} درهم`;
-            el.printDate.textContent = formatDate(sale.date);
+            el.printDate.textContent = formatArabicDate(sale.date);
             el.printCustomer.textContent = sale.customer || '---';
             el.printTime.textContent = new Date().toLocaleTimeString('ar-EG');
             el.invoiceNumber.textContent = `INV-${sale.id.toString().slice(-6)}`;
+            
+            if (sale.discount > 0) {
+                el.printDiscount.textContent = `${sale.discount.toFixed(2)} درهم`;
+                el.printDiscountRow.style.display = '';
+                el.printTotalAfterDiscount.textContent = `${sale.totalAfterDiscount.toFixed(2)} درهم`;
+                el.printTotalAfterDiscountRow.style.display = '';
+            } else {
+                el.printDiscountRow.style.display = 'none';
+                el.printTotalAfterDiscountRow.style.display = 'none';
+            }
             
             // الطباعة
             el.printArea.style.display = 'block';
@@ -1486,12 +1933,100 @@
             el.printArea.style.display = 'none';
         }
 
+        function preparePurchasePrint() {
+            const today = new Date().toISOString().split('T')[0];
+            const items = [];
+            let total = 0;
+            
+            document.querySelectorAll('#purchaseItems .item-entry').forEach(itemDiv => {
+                const name = itemDiv.querySelector('.product-name').value;
+                const quantity = parseFloat(itemDiv.querySelector('.product-quantity').value);
+                const price = parseFloat(itemDiv.querySelector('.product-price').value);
+                const itemTotal = quantity * price;
+                
+                if (!name || !quantity || !price) return;
+                
+                items.push({
+                    name,
+                    quantity,
+                    price,
+                    total: itemTotal
+                });
+                
+                total += itemTotal;
+            });
+            
+            if (items.length === 0) {
+                showToast('لا توجد عناصر لطباعتها', 'error');
+                return;
+            }
+            
+            // تعبئة بيانات الطباعة
+            el.printPurchaseItems.innerHTML = items.map(item => `
+                <tr>
+                    <td style="padding: 8px; text-align: right;">${item.name}</td>
+                    <td style="padding: 8px; text-align: center;">${item.quantity}</td>
+                    <td style="padding: 8px; text-align: left;">${item.price.toFixed(2)} درهم</td>
+                    <td style="padding: 8px; text-align: left;">${item.total.toFixed(2)} درهم</td>
+                </tr>
+            `).join('');
+            
+            el.printPurchaseTotal.textContent = `${total.toFixed(2)} درهم`;
+            el.printPurchaseDate.textContent = formatArabicDate(today);
+            el.printSupplier.textContent = el.supplierName.value || '---';
+            el.printPurchaseTime.textContent = new Date().toLocaleTimeString('ar-EG');
+            el.purchaseInvoiceNumber.textContent = `PUR-${Date.now().toString().slice(-6)}`;
+            
+            // الطباعة
+            el.printPurchaseArea.style.display = 'block';
+            window.print();
+            el.printPurchaseArea.style.display = 'none';
+        }
+
+        function printPurchase(id) {
+            const purchase = purchases.find(p => p.id === id);
+            if (!purchase) return;
+            
+            // تعبئة بيانات الطباعة
+            el.printPurchaseItems.innerHTML = purchase.items.map(item => `
+                <tr>
+                    <td style="padding: 8px; text-align: right;">${item.name}</td>
+                    <td style="padding: 8px; text-align: center;">${item.quantity}</td>
+                    <td style="padding: 8px; text-align: left;">${item.price.toFixed(2)} درهم</td>
+                    <td style="padding: 8px; text-align: left;">${item.total.toFixed(2)} درهم</td>
+                </tr>
+            `).join('');
+            
+            el.printPurchaseTotal.textContent = `${purchase.total.toFixed(2)} درهم`;
+            el.printPurchaseDate.textContent = formatArabicDate(purchase.date);
+            el.printSupplier.textContent = purchase.supplier || '---';
+            el.printPurchaseTime.textContent = new Date().toLocaleTimeString('ar-EG');
+            el.purchaseInvoiceNumber.textContent = `PUR-${purchase.id.toString().slice(-6)}`;
+            
+            // الطباعة
+            el.printPurchaseArea.style.display = 'block';
+            window.print();
+            el.printPurchaseArea.style.display = 'none';
+        }
+
         // ==================== وظائف مساعدة ====================
-        function formatDate(dateString) {
+        function formatArabicDate(dateString) {
             const options = { year: 'numeric', month: 'long', day: 'numeric' };
             return new Date(dateString).toLocaleDateString('ar-EG', options);
         }
 
+        // دالة لعرض تنبيهات
+        function showToast(message, type = 'success') {
+            el.toast.className = `toast ${type}`;
+            el.toastMessage.textContent = message;
+            el.toast.classList.add('show');
+            
+            setTimeout(() => {
+                el.toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // دالة للبحث في المبيعات
         function searchSales() {
             const term = el.salesSearch.value.toLowerCase();
             const filtered = sales.filter(s => 
@@ -1511,12 +2046,13 @@
             
             filtered.forEach(sale => {
                 const row = document.createElement('tr');
+                row.className = 'fade-in';
                 
                 row.innerHTML = `
-                    <td>${formatDate(sale.date)}</td>
+                    <td>${formatArabicDate(sale.date)}</td>
                     <td>${sale.customer || '---'}</td>
                     <td>${sale.items.length} منتج</td>
-                    <td>${sale.total.toFixed(2)} درهم</td>
+                    <td>${sale.total.toCurrency()}</td>
                     <td>
                         <button onclick="viewSale(${sale.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-eye"></i></button>
                         <button onclick="printSale(${sale.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-print"></i></button>
@@ -1528,11 +2064,13 @@
             });
         }
 
+        // دالة للبحث في المنتجات
         function searchProducts() {
             const term = el.productsSearch.value.toLowerCase();
             const filtered = products.filter(p => 
                 p.name.toLowerCase().includes(term) || 
-                p.description?.toLowerCase().includes(term)
+                p.description?.toLowerCase().includes(term) ||
+                p.barcode?.includes(term)
             );
             
             el.productsTable.innerHTML = '';
@@ -1545,20 +2083,13 @@
             el.noProducts.style.display = 'none';
             
             filtered.forEach(product => {
-                const profit = product.price - product.cost;
-                const profitPercentage = (profit / product.cost * 100).toFixed(1);
-                
                 const row = document.createElement('tr');
+                row.className = 'fade-in';
                 
                 row.innerHTML = `
                     <td>${product.name}</td>
-                    <td>${product.cost.toFixed(2)} درهم</td>
-                    <td>${product.price.toFixed(2)} درهم</td>
-                    <td>
-                        <span class="${profit >= 0 ? 'badge-success' : 'badge-danger'}">
-                            ${profit.toFixed(2)} درهم (${profitPercentage}%)
-                        </span>
-                    </td>
+                    <td>${product.price.toCurrency()}</td>
+                    <td>${product.barcode || '---'}</td>
                     <td>
                         <button onclick="editProduct(${product.id})" class="secondary" style="padding: 5px 10px;"><i class="fas fa-edit"></i></button>
                         <button onclick="deleteProduct(${product.id})" class="danger" style="padding: 5px 10px;"><i class="fas fa-trash"></i></button>
@@ -1609,7 +2140,7 @@
             if (!sale) return;
             
             let message = `فاتورة بيع #${id}\n`;
-            message += `التاريخ: ${formatDate(sale.date)}\n`;
+            message += `التاريخ: ${formatArabicDate(sale.date)}\n`;
             message += `العميل: ${sale.customer || '---'}\n\n`;
             message += `المنتجات:\n`;
             
@@ -1619,6 +2150,11 @@
             
             message += `\nالإجمالي: ${sale.total.toFixed(2)} درهم`;
             
+            if (sale.discount > 0) {
+                message += `\nالخصم: ${sale.discount.toFixed(2)} درهم`;
+                message += `\nالإجمالي بعد الخصم: ${sale.totalAfterDiscount.toFixed(2)} درهم`;
+            }
+            
             alert(message);
         }
 
@@ -1627,7 +2163,7 @@
             if (!purchase) return;
             
             let message = `فاتورة شراء #${id}\n`;
-            message += `التاريخ: ${formatDate(purchase.date)}\n`;
+            message += `التاريخ: ${formatArabicDate(purchase.date)}\n`;
             message += `المورد: ${purchase.supplier || '---'}\n\n`;
             message += `المنتجات:\n`;
             
@@ -1646,6 +2182,7 @@
                 localStorage.setItem('sales', JSON.stringify(sales));
                 loadRecentSales();
                 loadDashboard();
+                showToast('تم حذف الفاتورة بنجاح');
             }
         }
 
@@ -1655,13 +2192,36 @@
                 localStorage.setItem('purchases', JSON.stringify(purchases));
                 loadRecentPurchases();
                 loadDashboard();
+                showToast('تم حذف فاتورة الشراء بنجاح');
             }
         }
+
+        // تحديث حالة زر الحفظ
+        function updateSaveButtonState() {
+            // تحديث حالة زر حفظ المبيعات
+            const saleItemsCount = document.querySelectorAll('#saleItems .item-entry').length;
+            el.saveSaleBtn.disabled = saleItemsCount === 0;
+            
+            // تحديث حالة زر حفظ المشتريات
+            const purchaseItemsCount = document.querySelectorAll('#purchaseItems .item-entry').length;
+            el.savePurchaseBtn.disabled = purchaseItemsCount === 0;
+            
+            // تحديث حالة زر حفظ المنتجات
+            const productName = el.productName.value.trim();
+            const productPrice = el.productPrice.value.trim();
+            el.saveProductBtn.disabled = !productName || !productPrice;
+        }
+
+        // إضافة دالة toCurrency إلى النوع Number
+        Number.prototype.toCurrency = function() {
+            return this.toFixed(2) + " درهم";
+        };
 
         // جعل الوظائف متاحة عالمياً
         window.viewSale = viewSale;
         window.viewPurchase = viewPurchase;
         window.printSale = printSale;
+        window.printPurchase = printPurchase;
         window.deleteSale = deleteSale;
         window.deletePurchase = deletePurchase;
         window.editProduct = editProduct;
